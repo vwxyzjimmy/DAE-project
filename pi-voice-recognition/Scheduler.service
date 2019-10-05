@@ -1,0 +1,9 @@
+[Unit]
+Description=scheduler for meter
+After=multi-user.target
+[Service]
+Type=idle
+ExecStart=/usr/bin/python3.5 /home/pi/pi-voice-recognition/irsend.py
+Restart=always
+[Install]
+WantedBy=multi-user.target
