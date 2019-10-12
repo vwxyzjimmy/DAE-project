@@ -12,7 +12,7 @@ class ClientThread(threading.Thread):
 		threading.Thread.__init__(self)
 		self.num = num
 	def run(self):
-		host = '192.168.11.4'
+		host = '140.116.179.183'
 		port = 9999
 		lastminute_new = datetime.now()
 		while True:
@@ -84,9 +84,9 @@ class ServerThread(threading.Thread):
 			while True:
 				#print("start server")
 				s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				s.bind(('192.168.11.4', 9999))
+				s.bind(('140.116.179.183', 9999))
 				#s.bind(('192.168.11.4', 9999))
-				
+
 				#print("start server ip: {0}:{1}".format('192.168.11.30', 9999))
 				s.listen(5)
 				s.settimeout(10)
@@ -107,8 +107,7 @@ class ServerThread(threading.Thread):
 							while (count < data_length):
 								data += sock.recv(SIZE)
 								count = len(data)
-							#save_path = 'C:/nclab_photo/' + img_name
-							save_path = 'D:/nclab_photo/' + img_name
+							save_path = '/home/nclabpc/nclab_photo/' + img_name
 							#save_path = str(os.getcwd()) + '/' + img_name
 							print("Server get save_path: {0}".format(save_path))
 							if save_path != '':
