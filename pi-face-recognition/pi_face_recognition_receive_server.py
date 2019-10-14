@@ -97,6 +97,7 @@ class ServerThread(threading.Thread):
 					try:
 						sock, addr = s.accept()
 						receive = sock.recv(SIZE)
+						print("addr: {0}".format(str(addr)))
 						img_name_length = struct.unpack('i',receive[0:4])[0]
 						img_name = struct.unpack((str(img_name_length) + 's'),receive[4:4+img_name_length])[0].decode('utf-8')
 						print('Server img_name: {0}'.format(img_name))
@@ -115,6 +116,16 @@ class ServerThread(threading.Thread):
 								f.write(data)
 								print("Server write data")
 								f.close()
+								detect_command = save_path + ":" + str(addr)
+								print("detect_command: {0}".format(detect_command))
+
+								s_detect_command = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+								s_detect_command.connect(('127.0.0.1', 9998))
+								s_detect_command.send(detect_command.encode())
+								got_rec = s_detect_command.recv(SIZE).decode()
+								print("got_rec: {0}".format(got_rec))
+								s_detect_command.close()
+
 						else:
 							print("receive: {0}, img_name_length: {1}, img_name: {2}, data_length: {3}".format(receive, img_name_length, img_name, data_length))
 							print("time: {0}".format(img_name))
