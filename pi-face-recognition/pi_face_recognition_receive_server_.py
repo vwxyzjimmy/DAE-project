@@ -20,7 +20,7 @@ class ClientThread(threading.Thread):
 			try:
 				while True:
 					tmp_photo = os.listdir('/home/pi/pi-face-recognition/pi-face-recognition/tmp_photo/')
-					#time.sleep(0.05)
+					time.sleep(0.5)
 					if (len(tmp_photo) > 0):
 						print('len(tmp_photo): {0}'.format(len(tmp_photo)))
 						time.sleep(1)
