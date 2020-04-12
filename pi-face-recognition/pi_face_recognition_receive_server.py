@@ -131,6 +131,7 @@ class ServerThread(threading.Thread):
 								fail_send = "fail"
 								sock.send(fail_send.encode())
 								print("fail img_name : {0}".format(img_name))
+								time.sleep(0.5)
 								save_path = ''
 							if save_path != '':
 								f = open(save_path, 'wb')
