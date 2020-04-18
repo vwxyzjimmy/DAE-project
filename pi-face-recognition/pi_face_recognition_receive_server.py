@@ -76,6 +76,90 @@ class ClientThread(threading.Thread):
 			except:
 				print('reconnecting...')
 
+
+class ClientHandlerThread(threading.Thread):
+	def __init__(self, num, SOCK, ADDR):
+		threading.Thread.__init__(self)
+		self.num = num
+		self.sock = SOCK
+		self.addr = ADDR
+	def run(self):
+		self.sock.settimeout(2)
+		save_path = ''
+		SIZE = 1024
+		try:
+			receive = self.sock.recv(SIZE)
+			img_name_length = struct.unpack('i',receive[0:4])[0]
+			img_name = struct.unpack((str(img_name_length) + 's'),receive[4:4+img_name_length])[0].decode('utf-8')
+			data_length = struct.unpack('i',receive[4+img_name_length:8+img_name_length])[0]
+			print("Server got:\r\n	img_name_length: {0}\r\n	img_name: {1}\r\n	data_length: {2}".format(img_name_length, img_name, data_length))
+			start_rec_time = datetime.now()
+			timeoutduration = timedelta(seconds=2)
+			if data_length > 0:
+				data = bytearray()
+				#data.extend(receive[8+img_name_length:])
+				#count = len(receive[8+img_name_length:])
+				#data = receive[8+img_name_length:]
+				save_path = '/home/nclabpc/nclab_photo/' + img_name
+				f = open(save_path, 'wb')
+				count = 0
+				if_time_out = False
+				recv_packet_size = 20000
+				while (count < data_length):
+					if (datetime.now()-start_rec_time) > timeoutduration:
+						print("count: {0}, data_length: {1}\r\ntime out in receive".format(count, data_length))
+						if_time_out = True
+						break
+					recv_size = 0
+					if((data_length-count) > recv_packet_size):
+						recv_size = recv_packet_size
+					else:
+						recv_size = data_length-count
+					recv_data = self.sock.recv(recv_size)
+					if(recv_data):
+						f.write(recv_data)
+						count += len(recv_data)
+					#data += recv_data
+					#data.extend(recv_data)
+					#count = len(data)
+				f.close()
+				if if_time_out == False:
+					#save_path = '/home/nclabpc/nclab_photo/' + img_name
+					#save_path = str(os.getcwd()) + '/' + img_name
+					print("Server get save_path:\r\b{0}".format(save_path))
+				else:
+					os.remove(save_path)
+					fail_send = "fail"
+					self.sock.send(fail_send.encode())
+					print("fail img_name : {0}".format(img_name))
+					save_path = ''
+				if save_path != '':
+					detect_command = save_path + "|" + str(self.addr)
+					s_detect_command = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+					s_detect_command.settimeout(2)
+					s_detect_command.connect(('127.0.0.1', 9998))
+					s_detect_command.send(detect_command.encode())
+					got_rec_people = s_detect_command.recv(SIZE).decode()
+					print("got_rec_people: {0}".format(got_rec_people))
+					s_detect_command.close()
+					tmp = img_name.split("_")
+					Device = tmp[0]
+					Time = tmp[1] + " " + tmp[2][:8]
+					check_msg = tmp[2][8:]
+					tmp = got_rec_people.split(" ")
+					People_Count = int(tmp[0])
+					if check_msg == "-check.png":
+						got_rec_people = str(People_Count)
+					self.sock.send(got_rec_people.encode())
+					print("sock.send(got_rec_people.encode()): {0}".format(got_rec_people))
+			else:
+				print("receive: {0}, img_name_length: {1}, img_name: {2}, data_length: {3}".format(receive, img_name_length, img_name, data_length))
+				print("time: {0}".format(img_name))
+		except:
+			print("except in ClientHandlerThread")
+		self.sock.close()
+
+
 class ServerThread(threading.Thread):
 	def __init__(self, num):
 		threading.Thread.__init__(self)
@@ -93,50 +177,67 @@ class ServerThread(threading.Thread):
 				#s.bind(('192.168.11.4', 9999))
 
 				#print("start server ip: {0}:{1}".format('192.168.11.30', 9999))
-				s.listen(5)
+				s.listen(10)
 				s.settimeout(2)
 				#print('Server socket accept')
-				save_path = ''
-				SIZE = 1024
+				thread_count = 3
 				while True:
 					try:
 						sock, addr = s.accept()
+						thread_count += 1
+						ClientHandlerThread(thread_count, sock, addr).start()
+						'''
 						sock.settimeout(2)
+						save_path = ''
+						SIZE = 1024
+
 						receive = sock.recv(SIZE)
 						img_name_length = struct.unpack('i',receive[0:4])[0]
 						img_name = struct.unpack((str(img_name_length) + 's'),receive[4:4+img_name_length])[0].decode('utf-8')
 						data_length = struct.unpack('i',receive[4+img_name_length:8+img_name_length])[0]
-						print("Server got:\r\n	img_name_length: {0}\r\n	img_name: {1}\r\n	data_length: {2}".format(img_name_length, img_name, data_length))
-						start_rec_time = time.time()
+						#print("Server got:\r\n	img_name_length: {0}\r\n	img_name: {1}\r\n	data_length: {2}".format(img_name_length, img_name, data_length))
+						start_rec_time = datetime.now()
+						timeoutduration = timedelta(seconds=2)
 						if data_length > 0:
 							data = bytearray()
 							#data.extend(receive[8+img_name_length:])
 							#count = len(receive[8+img_name_length:])
 							#data = receive[8+img_name_length:]
+							save_path = '/home/nclabpc/nclab_photo/' + img_name
+							f = open(save_path, 'wb')
+							count = 0
 							if_time_out = False
-							while (len(data) < data_length):
-								if (time.time()-start_rec_time) > 2:
-									print("len(data): {0}\r\ntime out in receive".format(len(data)))
+							recv_packet_size = 20000
+							while (count < data_length):
+								if (datetime.now()-start_rec_time) > timeoutduration:
+									print("count: {0}, data_length: {1}\r\ntime out in receive".format(count, data_length))
 									if_time_out = True
 									break
-								recv_data = sock.recv(data_length-len(data))
+								recv_size = 0
+								if((data_length-count) > recv_packet_size):
+									recv_size = recv_packet_size
+								else:
+									recv_size = data_length-count
+								recv_data = sock.recv(recv_size)
+								if(recv_data):
+									f.write(recv_data)
+									count += len(recv_data)
 								#data += recv_data
-								data.extend(recv_data)
+								#data.extend(recv_data)
 								#count = len(data)
+							f.close()
 							if if_time_out == False:
-								save_path = '/home/nclabpc/nclab_photo/' + img_name
+								#save_path = '/home/nclabpc/nclab_photo/' + img_name
 								#save_path = str(os.getcwd()) + '/' + img_name
 								print("Server get save_path:\r\b{0}".format(save_path))
 							else:
+								os.remove(save_path)
 								fail_send = "fail"
 								sock.send(fail_send.encode())
 								print("fail img_name : {0}".format(img_name))
-								time.sleep(0.5)
+								#time.sleep(0.5)
 								save_path = ''
 							if save_path != '':
-								f = open(save_path, 'wb')
-								f.write(data)
-								f.close()
 								detect_command = save_path + "|" + str(addr)
 								s_detect_command = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 								s_detect_command.settimeout(2)
@@ -151,13 +252,6 @@ class ServerThread(threading.Thread):
 								check_msg = tmp[2][8:]
 								tmp = got_rec_people.split(" ")
 								People_Count = int(tmp[0])
-								'''
-								if People_Count > 0:
-									insert_command = "INSERT INTO nclab (Time, Device, People_Count) VALUES ('{0}', '{1}', '{2}')".format(Time, Device, People_Count)
-									print(insert_command)
-									cursor.execute(insert_command)
-									cursor.execute("commit")
-								'''
 								if check_msg == "-check.png":
 									got_rec_people = str(People_Count)
 								sock.send(got_rec_people.encode())
@@ -166,22 +260,6 @@ class ServerThread(threading.Thread):
 						else:
 							print("receive: {0}, img_name_length: {1}, img_name: {2}, data_length: {3}".format(receive, img_name_length, img_name, data_length))
 							print("time: {0}".format(img_name))
-
-						'''
-						count = len(receive[8+img_name_length:])
-						data = receive[8+img_name_length:]
-						while (count < data_length):
-							data += sock.recv(SIZE)
-							count = len(data)
-
-						save_path = 'D:/nclab_photo/' + img_name
-						#save_path = str(os.getcwd()) + '/' + img_name
-						print("Server get save_path: {0}".format(save_path))
-						if save_path != '':
-							f = open(save_path, 'wb')
-							f.write(data)
-							print("Server write data")
-							f.close()
 						'''
 					except Exception as e:
 						print('                                                 ', end='\r')
